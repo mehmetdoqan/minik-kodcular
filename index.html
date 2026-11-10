@@ -647,6 +647,118 @@ body.menu-on { background-image: radial-gradient(#d3dff0 1.4px, transparent 1.6p
   .rt-cards .rcard, .rghost { width: 80px; height: 96px; }
   .rtray .rt-h { display: none; }
 }
+/* ---------- Basık yatay ekranlar (telefon ve küçük tabletler, yükseklik ≤ 600) ----------
+   Sahne solda tam yükseklik; sağda bloklar, kod alanı ve yatay bölüm şeridi. */
+@media (orientation: landscape) and (max-height: 600px) and (min-width: 600px) {
+  body { padding-block: 6px; padding-left: max(10px, env(safe-area-inset-left, 0px)); padding-right: max(10px, env(safe-area-inset-right, 0px)); }
+  .app {
+    height: calc(100dvh - 12px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
+    gap: 6px 8px; max-width: none;
+    grid-template-columns: minmax(0, 1fr) minmax(270px, 38%);
+    grid-template-areas: "top top" "stage bar" "stage code" "stage levels";
+    grid-template-rows: auto auto minmax(0, 1fr) auto;
+  }
+  .app.tapmode { grid-template-areas: "top top" "stage levels"; grid-template-rows: auto minmax(0, 1fr); }
+  .top { gap: 8px; flex-wrap: nowrap; min-width: 0; }
+  .logo { font-size: 18px; gap: 6px; white-space: nowrap; } .logo svg { width: 26px; height: 26px; }
+  .lvl-name { font-size: 14px; padding: 2px 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+  .tbtn { width: 40px; height: 40px; border-radius: 12px; flex: none; } .tbtn svg { width: 24px; height: 24px; }
+
+  .stage-wrap { padding: 6px 8px 4px; border-radius: 16px; gap: 2px; }
+  .plane { container-type: size; height: 100%; padding: 0 0 44px 32px; }
+  .yax { width: 32px; padding-right: 4px; }
+  .xax { height: 44px; padding-top: 3px; }
+  .xax em { width: min(94cqw, 32px); height: min(94cqw, 32px); font-size: min(60cqw, 20px); border-width: 2px; }
+  .xax small { font-size: 10px; margin-top: 1px; }
+  .yax .ydot { width: 24px; height: 24px; font-size: 12px; }
+  .stage-frame { width: min(100cqw, 100cqh * 8 / 6); }
+  .tip { font-size: 13.5px; line-height: 1.25; min-height: 20px; gap: 6px; }
+  .goal { font-size: 11.5px; padding: 0 8px; }
+  .ask { padding: 3px 12px; gap: 8px; border-width: 2px; box-shadow: 0 3px 0 #f8cf9c; }
+  .ask-lbl { font-size: 17px; } .ask-a { width: 40px; height: 40px; font-size: 26px; border-width: 2px; }
+  .ask-plus { font-size: 22px; } .ask-c { width: 36px; height: 36px; } .ask-pips i { width: 11px; height: 11px; }
+  .dcard { width: 34px; height: 34px; border-radius: 9px; } .dcard svg { width: 24px; height: 24px; } .dcard.hid { font-size: 18px; }
+  .dwatch { font-size: 14px; padding: 4px 10px 4px 8px; }
+  .demo-play { width: 72px; height: 72px; } .demo-play svg { width: 34px; height: 34px; }
+  .demo-cover b { font-size: 20px; }
+
+  .levels { flex-direction: row; align-items: center; padding: 6px 8px; gap: 8px; max-height: none; border-radius: 16px; min-height: 0; }
+  .levels-head { flex-direction: column; align-items: flex-start; padding: 0; flex: none; }
+  .levels-head h2 { font-size: 13px; } .levels-head span { font-size: 11px; }
+  .lvl-list { flex-direction: row; overflow-x: auto; overflow-y: hidden; align-items: center; gap: 3px; padding: 0 0 2px; }
+  .sec { padding: 0 2px 0 8px; flex: none; font-size: 10px; }
+  .lv { width: auto; flex: none; font-size: 13px; padding: 2px 5px; gap: 5px; }
+  .lv .t { overflow: visible; } .lv .n { width: 22px; height: 22px; font-size: 12px; }
+  .app.tapmode .levels { flex-direction: column; align-items: stretch; }
+  .app.tapmode .levels-head { flex-direction: row; justify-content: space-between; align-items: baseline; }
+  .app.tapmode .lvl-list { flex-direction: column; overflow-x: hidden; overflow-y: auto; align-items: stretch; }
+  .app.tapmode .sec { padding: 8px 4px 2px; }
+  .app.tapmode .lv { width: 100%; }
+
+  .bar { padding: 6px; gap: 6px; border-radius: 14px; }
+  .cats { grid-template-columns: repeat(2, 28px); gap: 4px; }
+  .cat { width: 28px; height: 28px; border-radius: 8px; } .cat svg { width: 13px; height: 13px; }
+  .palette { min-height: 62px; padding: 4px 10px; gap: 12px; border-radius: 12px; }
+  .blk, .rep.pal { width: 50px; height: 50px; border-radius: 11px; }
+  .blk::after { top: 15px; height: 18px; right: -8px; width: 11px; } .blk::before { top: 15px; height: 18px; }
+  .blk svg, .rep.pal svg { width: 30px; height: 30px; }
+  .rep { padding: 6px 0 8px 6px; } .rep::after, .rep::before { top: 24px; }
+  .rep-body { min-height: 50px; min-width: 64px; } .rep-head { width: 48px; } .rep-head svg { width: 28px; height: 28px; }
+  .rep-body:empty::before { width: 44px; height: 44px; }
+  .script { min-height: 60px; } .ph { height: 48px; }
+  .code { min-height: 0; height: auto; border-radius: 16px; } .canvas { min-height: 0; background-size: 18px 18px; }
+  .hint { font-size: 14px; left: 12px; padding-right: 52px; } .hint svg { width: 24px; height: 24px; }
+  .trash { width: 34px; height: 34px; top: 8px; right: 8px; } .trash.restore { right: 48px; }
+
+  .win-card { padding: 14px 20px; } .win-card h3 { font-size: 26px; } .win-card p { font-size: 15px; margin: 4px 0 10px; }
+  .win-stars svg { width: 36px; height: 36px; } .fail-card .face { width: 60px; height: 66px; }
+  .next { font-size: 18px; padding: 6px 22px; }
+  .tpanel { max-height: calc(100vh - 20px); }
+
+  /* Kart oyunları */
+  .app.rutin {
+    grid-template-columns: minmax(0, 1fr) minmax(250px, 34%);
+    grid-template-areas: "top top" "stage tray" "stage levels";
+    grid-template-rows: auto minmax(0, 1fr) auto;
+  }
+  .rstage { padding: 6px 10px 4px; gap: 4px; border-radius: 16px; }
+  .rsky { height: 34px; border-radius: 10px; } .rsun { width: 26px; height: 26px; top: 4px; }
+  .rev .ev-e { font-size: 24px; } .rev .ev-t { font-size: 15px; }
+  .rwatch { right: 16px; top: 12px; }
+  .rline { flex-wrap: nowrap; gap: 3px; padding-top: 10px; }
+  .rslot { flex: 0 1 100px; border-radius: 14px; border-width: 2.5px; }
+  .rslot .num { width: 24px; height: 24px; font-size: 14px; top: -10px; left: -6px; }
+  .rslot .qm { font-size: 26px; }
+  .rarrow { width: 14px; height: 14px; }
+  .rtrack { height: 48px; } .rrobot { width: 40px; height: 48px; }
+  .rcard { border-radius: 12px; }
+  .rline.rules { padding-top: 58px; gap: 12px; } .rline.rules .rslot { flex-basis: 96px; }
+  .rhead { top: -56px; padding: 0 10px 2px; } .rhead .rce { font-size: 24px; }
+  .rline.beads .rslot { flex: 0 1 62px; }
+  .rline.bins { gap: 8px; } .rbin { min-height: 0; padding: 4px 6px 6px; border-radius: 14px; }
+  .rbin-h { height: 42px; } .rblob { width: 32px; height: 32px; } .rshp { width: 36px; height: 36px; } .remo { font-size: 30px; }
+  .rbin .rcard { width: 42px; height: 42px; }
+  .rtray { flex-direction: column; align-items: stretch; min-height: 0; padding: 6px; gap: 4px; border-radius: 16px; }
+  .rtray .rt-h { display: none; }
+  .rt-cards { min-height: 0; overflow-y: auto; gap: 8px; align-content: center; }
+  .rt-cards .rcard, .rghost { width: 74px; height: 90px; }
+  .rt-cards.pal .rcard { width: 60px; height: 60px; }
+  .rt-cards.small { gap: 6px; } .rt-cards.small .rcard, .rghost.small { width: 56px; height: 56px; }
+  .rghost.bead { width: 60px; height: 60px; }
+
+  /* Giriş ekranı */
+  #view-menu .home { height: calc(100dvh - 12px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px)); gap: 8px; max-width: none; }
+  #view-menu .hello { gap: 10px; } #view-menu .hello > svg { width: 42px; height: 46px; }
+  #view-menu .bubble { padding: 3px 14px; border-radius: 16px; } #view-menu .bubble h1 { font-size: 20px; } #view-menu .bubble p { font-size: 13px; }
+  #view-menu .brand { display: block; font-size: 18px; } #view-menu .teacher-btn { font-size: 13px; padding: 2px 10px 2px 8px; }
+  #view-menu .grid { grid-template-columns: repeat(4, minmax(0, 1fr)); grid-template-rows: repeat(3, minmax(0, 1fr)); gap: 8px; }
+  #view-menu .game { min-height: 0; padding: 6px 6px 8px; border-radius: 18px; gap: 2px; }
+  #view-menu .icon { width: auto; height: 100%; max-height: 110px; flex: 1 1 0; min-height: 0; border-radius: 18px; }
+  #view-menu .name { font-size: 15px; } #view-menu .skill { font-size: 11px; padding: 0 8px; }
+  #view-menu .game.live .play { width: 26px; height: 26px; top: 6px; right: 6px; } #view-menu .game.live .play svg { width: 12px; height: 12px; }
+  #view-menu .done-tag { top: 6px; left: 8px; font-size: 11px; }
+}
+
 </style>
 
 
