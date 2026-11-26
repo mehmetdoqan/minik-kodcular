@@ -30,7 +30,8 @@ Tablette en iyi yatay tutularak çalışır. Kurulum gerekmez; bağlantıyı tar
 
 - Çocuk tablette okulunu ve sınıfını seçip adıyla girer. Adı sınıfta yoksa giremez. İlerlemesi hangi tablette oynarsa oynasın sürer.
 - **Öğretmen** kendi sınıfını görür. Öğrencilerini biten bölüm, yıldız, ilk denemede başarı, süre, dikkat doğruluğu, tepki süresi ve yanlış dokunuşa göre karşılaştırır. Beceri haritasında her çocuğun her kategorideki ilerlemesini görür ve her çocuğun ayrıntılı raporunu açar.
-- **Kurum yöneticisi** bütün okulları ve sınıfları karşılaştırır. Okul, sınıf ve öğrenci ekler, öğretmen hesaplarını onaylar.
+- **Kurum yöneticisi** bütün okulları ve sınıfları karşılaştırır. Okul, sınıf ve öğrenci ekler, öğretmen hesaplarını (kullanıcı adı + şifre) açar. E-posta gerekmez.
+- Çocuklar için yalnızca ad tutulur; sınıfta aynı ad varsa soyadının ilk harfi eklenir (Ayşe Y.).
 
 Veriler kurumun kendi ücretsiz **Supabase** projesinde durur. Kurulum adımları: **[OKU-BENI.md](OKU-BENI.md)**. Okul sistemi kurulmadıysa uygulama eskisi gibi çalışır: ilerleme tablette saklanır, tablet içinde çocuk profilleri seçilebilir.
 
@@ -41,7 +42,7 @@ Bütün yönergeler Microsoft Azure'un Türkçe **Emel** sesiyle önceden kayded
 ## Eğitmen paneli
 
 Ana menüdeki **Eğitmen** düğmesi:
-- Okul sistemi kuruluysa öğretmen ve yönetici girişini açar (e-posta + şifre).
+- Okul sistemi kuruluysa öğretmen ve yönetici girişini açar (kullanıcı adı + şifre).
 - Okul sistemi yoksa basit bir çarpma sorusuyla korunan tablet panelini açar: tüm bölümleri açma, ses seçimi, oyun oyun ilerleme ve sıfırlama, çocuk raporu.
 
 ## Dosyalar

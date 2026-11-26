@@ -1,4 +1,4 @@
-<!doctype html><html><head><meta charset=utf8><script src="ayarlar.js"></script><script>(function(){var h=location.hash;if(/access_token=|error_description=/.test(h)){var p={};h.slice(1).split('&').forEach(function(x){var i=x.indexOf('=');if(i>0)p[decodeURIComponent(x.slice(0,i))]=decodeURIComponent(x.slice(i+1).replace(/\+/g,' '))});try{sessionStorage.setItem('mk-donus',JSON.stringify(p))}catch(e){}history.replaceState(null,'',location.pathname+location.search+'#menu')}})();</script><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<!doctype html><html><head><meta charset=utf8><script src="ayarlar.js"></script><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
 <title>Minik Kodcular</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -1089,6 +1089,8 @@ td.iyi, span.iyi { color: #1f8a52; font-weight: 800; } td.dus, span.dus { color:
 .okp-links .okg-link { margin: 0; }
 tr.okp-bekle td { background: #fff8e8; }
 .okp-kisi select { font: inherit; font-size: 14px; padding: 4px 6px; border: 2px solid #d6e0ee; border-radius: 8px; }
+.okp-check { flex-direction: row !important; align-items: flex-start; gap: 8px !important; font-weight: 600 !important; font-size: 14px !important; color: #55657e; }
+.okp-check input { margin-top: 3px; }
 </style>
 
 
@@ -5654,7 +5656,7 @@ tr.okp-bekle td { background: #fff8e8; }
   //   DbBE   — claude.ai artefaktının ortak veritabanı (window.claude.use('db'))
   //   SupaBE — Supabase (GitHub Pages sürümü; ayarlar.js içindeki window.MK_SUPABASE)
   const OKBE = (() => {
-    const norm = s => String(s || '').normalize('NFC').toLocaleLowerCase('tr-TR').replace(/\s+/g, ' ').trim();
+    const norm = s => String(s || '').normalize('NFC').toLocaleLowerCase('tr-TR').replace(/\u0307/g, '').replace(/ı/g, 'i').replace(/\./g, '').replace(/\s+/g, ' ').trim();
     const byAd = (a, b) => String(a.ad).localeCompare(String(b.ad), 'tr');
     const evKey = e => [e.t, e.e, e.g, e.l, e.k, e.ok].join('|');
     const mergeEv = (a, b) => { const m = new Map(); a.concat(b).forEach(e => m.set(evKey(e), e)); return [...m.values()].sort((x, y) => x.t - y.t); };
@@ -5663,6 +5665,8 @@ tr.okp-bekle td { background: #fff8e8; }
     // ad listesinde eşleşme: tam ad ya da sınıfta tek olan ilk ad
     function eslestir(list, ad) {
       let hit = list.filter(o => o.k === ad);
+      const t = ad.split(' ');
+      if (!hit.length && t.length > 1) { const kisa = t[0] + ' ' + t[1][0]; hit = list.filter(o => o.k === kisa); } // "Mehmet Kaya" → "Mehmet K."
       if (!hit.length) hit = list.filter(o => o.k.split(' ')[0] === ad);
       return hit.length === 1 ? hit[0] : hit.length > 1 ? 'cok' : 'yok';
     }
@@ -5711,7 +5715,6 @@ tr.okp-bekle td { background: #fff8e8; }
           if (ozet) await put('ozet/' + st.id, { sid: st.sid, cid: st.cid, ad: st.ad, t: Date.now(), s: ozet });
         },
         // yetkili tarafı
-        girisAlani: 'kullanıcı adı',
         async ilkKurulumGerekli() { return !(await all('yetkili')).length; },
         async ilkKurulum(ad, u, pw) {
           u = uname(u); if (!u) throw hata('Kullanıcı adı geçersiz.');
@@ -5752,57 +5755,41 @@ tr.okp-bekle td { background: #fff8e8; }
         },
         async yetkiliAta(y, rol, cids) { const o = await one('yetkili/' + y.id); delete o.id; o.rol = rol; o.cids = cids; await put('yetkili/' + y.id, o); },
         yetkiliSil: y => del('yetkili/' + y.id),
+        async kendiSifrem(eski, yeni) {
+          const st = ss.get('mk-staff'), y = st && await one('yetkili/' + st.id);
+          if (!y || (await hash(eski, y.salt)) !== y.hash) throw hata('Şu anki şifreniz yanlış.');
+          if (String(yeni).length < 6) throw hata('Şifre en az 6 karakter olmalı.');
+          const o = Object.assign({}, y); delete o.id; o.salt = newSalt(); o.hash = await hash(yeni, o.salt); await put('yetkili/' + st.id, o);
+        },
         async sifreKoy(y, pw) { const o = await one('yetkili/' + y.id); delete o.id; o.salt = newSalt(); o.hash = await hash(pw, o.salt); await put('yetkili/' + y.id, o); },
       };
     }
 
     // ---------------- Supabase ----------------
+    // Tablolar dışarıya kapalı; her şey kurulum.sql'deki fonksiyonlardan geçer.
     function SupaBE(cfg) {
-      const U = String(cfg.url).replace(/\/+$/, ''), K = cfg.key;
-      const SK = 'mk-supa-oturum';
-      let ses = ss.get(SK);
-      const TR = {
-        'Invalid login credentials': 'E-posta ya da şifre yanlış.',
-        'Email not confirmed': 'E-postanız henüz doğrulanmadı. Gelen kutunuzdaki bağlantıya dokunun.',
-        'User already registered': 'Bu e-postayla zaten bir hesap var. Giriş yapın.',
-        'Password should be at least 6 characters.': 'Şifre en az 6 karakter olmalı.',
-      };
-      async function req(path, { method = 'GET', body, headers = {}, auth = true } = {}) {
-        if (auth && ses && ses.expires_at * 1000 < Date.now() + 60e3) await yenile();
-        const h = Object.assign({ apikey: K, 'Content-Type': 'application/json', Authorization: 'Bearer ' + (auth && ses ? ses.access_token : K) }, headers);
+      const U = String(cfg.url).replace(/\/+$/, ''), K = cfg.key, SK = 'mk-supa-oturum';
+      let ses = ss.get(SK); // { tok }
+      const ERR = { yanlis: 'Kullanıcı adı ya da şifre yanlış.', cok_deneme: 'Çok fazla yanlış deneme. 15 dakika sonra yeniden deneyin.', eski_yanlis: 'Şu anki şifreniz yanlış.', kisa: 'Şifre en az 6 karakter olmalı.' };
+      async function rpc(fn, args) {
         let r;
-        try { r = await fetch(U + path, { method, headers: h, body: body === undefined ? undefined : JSON.stringify(body) }); }
+        try { r = await fetch(`${U}/rest/v1/rpc/${fn}`, { method: 'POST', headers: { apikey: K, Authorization: 'Bearer ' + K, 'Content-Type': 'application/json' }, body: JSON.stringify(args || {}) }); }
         catch (e) { throw hata('Sunucuya ulaşılamadı. İnternet bağlantısını kontrol edin.'); }
         const txt = await r.text(); let j = null; try { j = txt ? JSON.parse(txt) : null; } catch (e) {}
         if (!r.ok) {
-          const m = j && (j.error_description || j.msg || j.message || j.error) || ('HTTP ' + r.status);
-          if (r.status === 401 && auth && ses) { ses = null; ss.set(SK, null); }
-          const e = hata(TR[m] || (j && j.code === '23505' ? 'Bu kayıt zaten var.' : m)); e.status = r.status; throw e;
+          const m = (j && (j.message || j.msg)) || ('HTTP ' + r.status);
+          if (m === 'OTURUM') { ses = null; ss.set(SK, null); const e = hata('Oturumunuz kapandı. Yeniden giriş yapın.'); e.oturumYok = true; throw e; }
+          if (m === 'YETKI') throw hata('Bu işlem için yetkiniz yok.');
+          if (j && j.code === '23505') throw hata('Bu kayıt zaten var.');
+          if (j && j.code === 'P0001') throw hata(m);
+          throw hata('Sunucu hatası: ' + m);
         }
+        if (j && j.err) throw hata(ERR[j.err] || j.err);
         return j;
       }
-      async function yenile() {
-        const rt = ses && ses.refresh_token; ses = null;
-        if (!rt) return;
-        try { ses = await req('/auth/v1/token?grant_type=refresh_token', { method: 'POST', body: { refresh_token: rt }, auth: false }); ss.set(SK, ses); } catch (e) { ss.set(SK, null); }
-      }
-      const rpc = (fn, args, auth = false) => req('/rest/v1/rpc/' + fn, { method: 'POST', body: args || {}, auth });
-      async function sec(t, q) { // 1000 satırdan uzun listeler için sayfalı okuma
-        let out = [], from = 0;
-        for (;;) { const part = await req(`/rest/v1/${t}?${q}`, { headers: { Range: `${from}-${from + 999}`, 'Range-Unit': 'items' } }) || []; out = out.concat(part); if (part.length < 1000) return out; from += 1000; }
-      }
-      const ekle = (t, rows, ret) => req('/rest/v1/' + t, { method: 'POST', body: rows, headers: { Prefer: ret ? 'return=representation' : 'return=minimal' } });
-      const guncelle = (t, q, v) => req(`/rest/v1/${t}?${q}`, { method: 'PATCH', body: v, headers: { Prefer: 'return=minimal' } });
-      const sil = (t, q) => req(`/rest/v1/${t}?${q}`, { method: 'DELETE', headers: { Prefer: 'return=minimal' } });
-      const uid = () => ses && ses.user && ses.user.id;
-      async function benKimim() {
-        if (!ses) return null;
-        const id = uid(); if (!id) return null;
-        const [y] = await req(`/rest/v1/yetkili?id=eq.${id}&select=id,ad,email,rol`) || [];
-        if (!y) return { id, ad: '', rol: null, cids: [], email: ses.user.email };
-        const cs = await req(`/rest/v1/yetkili_sinif?yetkili_id=eq.${id}&select=sinif_id`) || [];
-        return { id, ad: y.ad || y.email, rol: y.rol, cids: cs.map(c => c.sinif_id), email: y.email };
-      }
+      const tok = () => { if (!ses) { const e = hata('Oturumunuz kapandı. Yeniden giriş yapın.'); e.oturumYok = true; throw e; } return ses.tok; };
+      const yon = (islem, v) => rpc('yonetim', { p_tok: tok(), p_islem: islem, v });
+      const benOf = b => ({ id: b.id, ad: b.ad || b.kullanici, rol: b.rol, cids: b.cids || [], hesap: b.kullanici });
       return {
         tur: 'supa',
         hazir: async () => true,
@@ -5810,64 +5797,38 @@ tr.okp-bekle td { background: #fff8e8; }
         siniflar: sid => rpc('sinif_listesi', { p_okul: sid }),
         sinif: async cid => { const [s] = await rpc('sinif_bilgi', { p_sinif: cid }) || []; return s ? { id: s.id, ad: s.ad, sid: s.okul_id } : null; },
         async ogrGiris(cid, ad) {
-          const r = await rpc('ogrenci_giris', { p_sinif: cid, p_ad: ad });
-          if (r.err) return { err: r.err };
-          return { ogr: r.ogr, prog: r.prog || {}, ev: r.ev || [] };
+          const r = await fetch(`${U}/rest/v1/rpc/ogrenci_giris`, { method: 'POST', headers: { apikey: K, Authorization: 'Bearer ' + K, 'Content-Type': 'application/json' }, body: JSON.stringify({ p_sinif: cid, p_ad: ad }) });
+          if (!r.ok) throw new Error('HTTP ' + r.status);
+          const j = await r.json(); if (j.err) return { err: j.err };
+          return { ogr: j.ogr, prog: j.prog || {}, ev: j.ev || [] };
         },
         async ogrKaydet(st, groups, prog, ozet) {
-          if (!st.tok) throw new Error('anahtar yok');
+          if (!st.tok) { const e = new Error('anahtar yok'); e.oturum = true; throw e; }
           const ok = await rpc('ogrenci_kaydet', { p_tok: st.tok, p_kayit: Object.keys(groups).length ? groups : null, p_prog: prog || null, p_ozet: ozet || null });
           if (ok === false) { const e = new Error('oturum geçersiz'); e.oturum = true; throw e; }
         },
-        girisAlani: 'e-posta',
         async ilkKurulumGerekli() { return false; },
-        async giris(email, pw) {
-          ses = await req('/auth/v1/token?grant_type=password', { method: 'POST', body: { email: String(email).trim().toLowerCase(), password: pw }, auth: false });
-          ss.set(SK, ses); return benKimim();
-        },
-        async kayitOl(ad, email, pw) {
-          const r = await req('/auth/v1/signup', { method: 'POST', body: { email: String(email).trim().toLowerCase(), password: pw, data: { ad }, options: { emailRedirectTo: location.href.split('#')[0] } }, auth: false });
-          if (r && r.access_token) { ses = r; ss.set(SK, ses); return { girdi: true }; }
-          return { girdi: false };
-        },
-        sifremiUnuttum: email => req('/auth/v1/recover', { method: 'POST', body: { email: String(email).trim().toLowerCase(), redirect_to: location.href.split('#')[0] }, auth: false }),
-        async donusOturumu(h) { // e-posta bağlantısından dönüş (#access_token=...&type=recovery|signup)
-          ses = { access_token: h.access_token, refresh_token: h.refresh_token, expires_at: +h.expires_at || Math.floor(Date.now() / 1000) + (+h.expires_in || 3600), user: null };
-          const u = await req('/auth/v1/user'); ses.user = u; ss.set(SK, ses); return benKimim();
-        },
-        kendiSifrem: pw => req('/auth/v1/user', { method: 'PUT', body: { password: pw } }),
-        oturum: () => benKimim(),
-        async cikis() { try { await req('/auth/v1/logout', { method: 'POST' }); } catch (e) {} ses = null; ss.set(SK, null); },
+        async giris(u, pw) { const r = await rpc('yetkili_giris', { p_kullanici: String(u).trim().toLowerCase(), p_sifre: pw }); ses = { tok: r.tok }; ss.set(SK, ses); return benOf(r.ben); },
+        async oturum() { if (!ses) return null; try { return benOf(await rpc('yetkili_ben', { p_tok: ses.tok })); } catch (e) { if (e.oturumYok) return null; throw e; } },
+        async cikis() { if (ses) { try { await rpc('yetkili_cikis', { p_tok: ses.tok }); } catch (e) {} } ses = null; ss.set(SK, null); },
+        kendiSifrem: (eski, yeni) => rpc('kendi_sifrem', { p_tok: tok(), p_eski: eski, p_yeni: yeni }),
         async yukle() {
-          const [okullar, sin, ogr, oz, yet, ys] = await Promise.all([
-            sec('okul', 'select=id,ad'), sec('sinif', 'select=id,ad,okul_id'), sec('ogrenci', 'select=id,ad,k,sinif_id'),
-            sec('ozet', 'select=ogrenci_id,s'), sec('yetkili', 'select=id,ad,email,rol'), sec('yetkili_sinif', 'select=yetkili_id,sinif_id')]);
-          const sOf = Object.fromEntries(sin.map(s => [s.id, s.okul_id]));
-          return {
-            okullar, siniflar: sin.map(s => ({ id: s.id, ad: s.ad, sid: s.okul_id })),
-            ogr: ogr.map(o => ({ id: o.id, ad: o.ad, k: o.k, cid: o.sinif_id, sid: sOf[o.sinif_id] })),
-            ozet: Object.fromEntries(oz.map(z => [z.ogrenci_id, { s: z.s }])),
-            yetkili: yet.map(y => ({ id: y.id, ad: y.ad || y.email, rol: y.rol, hesap: y.email, cids: ys.filter(x => x.yetkili_id === y.id).map(x => x.sinif_id) })),
-          };
+          const d = await rpc('panel_veri', { p_tok: tok() });
+          return { okullar: d.okullar, siniflar: d.siniflar, ogr: d.ogr, ozet: Object.fromEntries(Object.entries(d.ozet || {}).map(([k, v]) => [k, { s: v }])), yetkili: d.yetkili.map(benOf) };
         },
-        okulEkle: ad => ekle('okul', { ad }),
-        okulAd: (o, ad) => guncelle('okul', 'id=eq.' + o.id, { ad }),
-        async sinifEkle(sid, ad) { const [r] = await ekle('sinif', { okul_id: sid, ad }, true); return r.id; },
-        sinifAd: (s, ad) => guncelle('sinif', 'id=eq.' + s.id, { ad }),
-        sinifSil: s => sil('sinif', 'id=eq.' + s.id),
-        ogrEkle: (cl, list) => list.length ? ekle('ogrenci', list.map(o => ({ sinif_id: cl.id, ad: o.ad, k: o.k }))) : null,
-        ogrAd: (o, ad, k) => guncelle('ogrenci', 'id=eq.' + o.id, { ad, k }),
-        ogrSil: o => sil('ogrenci', 'id=eq.' + o.id),
-        async ogrKayit(oid) { let log = []; (await sec('kayit', `ogrenci_id=eq.${oid}&select=ev`)).forEach(k => { log = log.concat(k.ev || []); }); return mergeEv(log, []); },
-        // öğretmen hesapları: öğretmen kendisi kayıt olur, yönetici onaylar ve sınıf atar
-        yetkiliEkleyebilir: false,
-        async yetkiliAta(y, rol, cids) {
-          await guncelle('yetkili', 'id=eq.' + y.id, { rol: rol || null });
-          await sil('yetkili_sinif', 'yetkili_id=eq.' + y.id);
-          if (rol === 'ogretmen' && cids.length) await ekle('yetkili_sinif', cids.map(c => ({ yetkili_id: y.id, sinif_id: c })));
-        },
-        async yetkiliSil(y) { await guncelle('yetkili', 'id=eq.' + y.id, { rol: null }); await sil('yetkili_sinif', 'yetkili_id=eq.' + y.id); },
-        ben: uid,
+        okulEkle: ad => yon('okul_ekle', { ad }),
+        okulAd: (o, ad) => yon('okul_ad', { id: o.id, ad }),
+        async sinifEkle(sid, ad) { return (await yon('sinif_ekle', { sid, ad })).id; },
+        sinifAd: (s, ad) => yon('sinif_ad', { id: s.id, ad }),
+        sinifSil: s => yon('sinif_sil', { id: s.id }),
+        ogrEkle: (cl, list) => list.length ? yon('ogr_ekle', { cid: cl.id, list: list.map(o => ({ ad: o.ad })) }) : null,
+        ogrAd: (o, ad) => yon('ogr_ad', { id: o.id, ad }),
+        ogrSil: o => yon('ogr_sil', { id: o.id }),
+        async ogrKayit(oid) { return mergeEv(await rpc('ogrenci_kayitlari', { p_tok: tok(), p_ogr: oid }) || [], []); },
+        async yetkiliEkle({ ad, u, pw, rol, cids }) { const kul = String(u).trim().toLowerCase(); await yon('yetkili_ekle', { kullanici: kul, ad, sifre: pw, rol, cids }); return kul; },
+        yetkiliAta: (y, rol, cids) => yon('yetkili_ata', { id: y.id, rol, cids: rol === 'ogretmen' ? cids : [] }),
+        yetkiliSil: y => yon('yetkili_sil', { id: y.id }),
+        sifreKoy: (y, pw) => yon('sifre_koy', { id: y.id, sifre: pw }),
       };
     }
 
@@ -5984,7 +5945,7 @@ tr.okp-bekle td { background: #fff8e8; }
       const go = ov.querySelector('.okg-go'); go.disabled = true; go.textContent = '…';
       let r;
       try { r = await BE.ogrGiris(G.cid, ad); } catch (er) { return renderLogin('Bağlantı kurulamadı. Biraz sonra yeniden dene.'); }
-      if (r.err) { window.mkSay && window.mkSay('Bu isim bu sınıfta yok. Öğretmenine sor.'); return renderLogin(r.err === 'cok' ? 'Bu sınıfta bu adla birden çok öğrenci var. Soyadını da yaz.' : 'Bu isim bu sınıfta yok. Öğretmenine sor.'); }
+      if (r.err) { window.mkSay && window.mkSay('Bu isim bu sınıfta yok. Öğretmenine sor.'); return renderLogin(r.err === 'cok' ? 'Bu sınıfta bu adla birden çok öğrenci var. Soyadının ilk harfini de yaz (ör. Ayşe Y).' : 'Bu isim bu sınıfta yok. Öğretmenine sor.'); }
       enter(r);
     });
     function enter(r) {
@@ -6037,15 +5998,13 @@ tr.okp-bekle td { background: #fff8e8; }
     let V = { tab: null, cid: null, oid: null, sort: { k: 'ad', d: 1 }, metric: 'bitti' };
     let cache = null, ST = null;
     const msg = (t, bad) => { const m = $m('okpMsg'); m.textContent = t; m.className = 'okp-msg' + (bad ? ' bad' : ''); m.hidden = !t; if (t) setTimeout(() => { if (m.textContent === t) m.hidden = true; }, 5000); };
-    const hataMsg = er => msg(er && er.kullanici ? er.message : 'Kaydedilemedi. Bu hesabın düzenleme izni olmayabilir ya da bağlantı yok.', true);
+    const hataMsg = er => er && er.oturumYok ? (ST = null, cache = null, loginForm(er.message)) : msg(er && er.kullanici ? er.message : 'Kaydedilemedi. Bu hesabın düzenleme izni olmayabilir ya da bağlantı yok.', true);
     const ustBos = () => { $m('okpUser').textContent = ''; $m('okpTabs').innerHTML = ''; };
 
     async function open() {
       P.hidden = false; document.body.classList.add('ok-kilit');
       if (!(await BE.hazir())) { body.innerHTML = '<p class="rnote">Ortak veritabanına ulaşılamadı. Uygulamayı claude.ai hesabıyla açın.</p>'; return; }
       body.innerHTML = '<div class="okg-wait">Yükleniyor…</div>'; ustBos();
-      const donus = BE.ss.get('mk-donus');
-      if (SUPA && donus) { BE.ss.set('mk-donus', null); return donusYap(donus); }
       try { ST = await BE.oturum(); } catch (e) { ST = null; }
       if (ST) return dash();
       let ilk = false; try { ilk = await BE.ilkKurulumGerekli(); } catch (e) {}
@@ -6069,47 +6028,24 @@ tr.okp-bekle td { background: #fff8e8; }
         try { ST = await BE.ilkKurulum(f.ad.value.trim(), f.u.value, f.pw.value); msg('Yönetici hesabı oluşturuldu.'); V.tab = 'yonet'; dash(); } catch (er) { hataMsg(er); }
       });
     }
-    function loginForm(err, bilgi) {
+    function loginForm(err) {
       $m('okpTitle').textContent = 'Eğitmen girişi'; ustBos();
-      const alan = SUPA ? '<label>E-posta <input name="u" type="email" required autocapitalize="none" autocomplete="username"></label>' : '<label>Kullanıcı adı <input name="u" required autocapitalize="none" autocomplete="username"></label>';
-      body.innerHTML = `<form class="okp-form okp-login" id="okpLogin">${alan}
+      body.innerHTML = `<form class="okp-form okp-login" id="okpLogin"><label>Kullanıcı adı <input name="u" required autocapitalize="none" autocomplete="username"></label>
         <label>Şifre <input name="pw" type="password" required autocomplete="current-password"></label>
-        <button type="submit" class="okp-go">Giriş</button>${err ? `<p class="okg-err">${esc(err)}</p>` : ''}${bilgi ? `<p class="okp-bilgi">${esc(bilgi)}</p>` : ''}
-        ${SUPA ? `<p class="okp-links"><button type="button" class="okg-link" data-git="kayit">Öğretmen hesabı oluştur</button> · <button type="button" class="okg-link" data-git="unuttum">Şifremi unuttum</button></p>` : '<p class="rnote">Hesabınız yoksa kurum yöneticinizden isteyin.</p>'}</form>`;
+        <button type="submit" class="okp-go">Giriş</button>${err ? `<p class="okg-err">${esc(err)}</p>` : ''}
+        <p class="rnote">Kullanıcı adınızı ve şifrenizi kurum yöneticiniz verir. Şifrenizi unuttuysanız yöneticinizden yenisini isteyin.</p></form>`;
       $m('okpLogin').addEventListener('submit', async e => {
         e.preventDefault(); const f = e.target, b = f.querySelector('button[type=submit]'); b.disabled = true; b.textContent = 'Kontrol ediliyor…';
         try { ST = await BE.giris(f.u.value, f.pw.value); V.tab = null; cache = null; dash(); }
         catch (er) { loginForm(er.kullanici ? er.message : 'Giriş yapılamadı.'); }
       });
     }
-    function kayitForm() {
-      $m('okpTitle').textContent = 'Öğretmen hesabı oluştur'; ustBos();
-      body.innerHTML = `<form class="okp-form okp-login" id="okpKayit"><p class="rnote">Hesabınızı açtıktan sonra e-postanıza gelen bağlantıyla doğrulayın. Kurum yöneticiniz hesabınızı onaylayıp sınıfınızı atayınca öğrencilerinizi görürsünüz.</p>
-        <label>Ad soyad <input name="ad" required maxlength="60"></label><label>E-posta <input name="u" type="email" required autocapitalize="none"></label>
-        <label>Şifre (en az 6 karakter) <input name="pw" type="password" required minlength="6"></label>
-        <button type="submit" class="okp-go">Hesabı oluştur</button><button type="button" class="okg-link" data-git="giris">◀ Girişe dön</button></form>`;
-      $m('okpKayit').addEventListener('submit', async e => {
-        e.preventDefault(); const f = e.target;
-        try { const r = await BE.kayitOl(f.ad.value.trim(), f.u.value, f.pw.value); if (r.girdi) { ST = await BE.oturum(); return dash(); } loginForm(null, 'Hesap açıldı. E-postanıza gelen bağlantıyla doğrulayın, sonra giriş yapın.'); }
-        catch (er) { hataMsg(er); }
-      });
+    function sifreForm() {
+      $m('okpTitle').textContent = 'Şifremi değiştir';
+      body.innerHTML = `<form class="okp-form okp-login" id="okpSifre"><label>Şu anki şifre <input name="eski" type="password" required autocomplete="current-password"></label><label>Yeni şifre (en az 6 karakter) <input name="pw" type="password" required minlength="6" autocomplete="new-password"></label><label>Yeni şifre (tekrar) <input name="pw2" type="password" required minlength="6" autocomplete="new-password"></label><button type="submit" class="okp-go">Kaydet</button><button type="button" class="okg-link" data-sifre-vazgec="1">◀ Vazgeç</button></form>`;
+      $m('okpSifre').addEventListener('submit', async e => { e.preventDefault(); const f = e.target; if (f.pw.value !== f.pw2.value) return msg('Yeni şifreler aynı değil.', true); try { await BE.kendiSifrem(f.eski.value, f.pw.value); msg('Şifreniz değiştirildi.'); dash(); } catch (er) { hataMsg(er); } });
     }
-    function unuttumForm() {
-      $m('okpTitle').textContent = 'Şifremi unuttum'; ustBos();
-      body.innerHTML = `<form class="okp-form okp-login" id="okpUnut"><label>E-posta <input name="u" type="email" required autocapitalize="none"></label><button type="submit" class="okp-go">Sıfırlama bağlantısı gönder</button><button type="button" class="okg-link" data-git="giris">◀ Girişe dön</button></form>`;
-      $m('okpUnut').addEventListener('submit', async e => { e.preventDefault(); try { await BE.sifremiUnuttum(e.target.u.value); loginForm(null, 'E-postanıza bir bağlantı gönderdik. Bağlantıya dokunup yeni şifrenizi belirleyin.'); } catch (er) { hataMsg(er); } });
-    }
-    function sifreForm(baslik) {
-      $m('okpTitle').textContent = baslik || 'Şifremi değiştir';
-      body.innerHTML = `<form class="okp-form okp-login" id="okpSifre"><label>Yeni şifre (en az 6 karakter) <input name="pw" type="password" required minlength="6" autocomplete="new-password"></label><label>Yeni şifre (tekrar) <input name="pw2" type="password" required minlength="6" autocomplete="new-password"></label><button type="submit" class="okp-go">Kaydet</button></form>`;
-      $m('okpSifre').addEventListener('submit', async e => { e.preventDefault(); const f = e.target; if (f.pw.value !== f.pw2.value) return msg('Şifreler aynı değil.', true); try { await BE.kendiSifrem(f.pw.value); msg('Şifreniz değiştirildi.'); dash(); } catch (er) { hataMsg(er); } });
-    }
-    async function donusYap(h) {
-      try { ST = await BE.donusOturumu(h); } catch (e) { return loginForm('Bağlantının süresi dolmuş olabilir. Yeniden deneyin.'); }
-      if (h.type === 'recovery') return sifreForm('Yeni şifrenizi belirleyin');
-      msg('E-postanız doğrulandı.'); dash();
-    }
-    body.addEventListener('click', e => { const g = e.target.closest('[data-git]'); if (!g) return; ({ kayit: kayitForm, unuttum: unuttumForm, giris: () => loginForm() })[g.dataset.git](); });
+    body.addEventListener('click', e => { if (e.target.closest('[data-sifre-vazgec]')) dash(); });
 
     async function load(force) {
       if (cache && !force) return cache;
@@ -6121,15 +6057,14 @@ tr.okp-bekle td { background: #fff8e8; }
     const myClasses = c => ST.rol === 'yonetici' ? c.siniflar : c.siniflar.filter(s => (ST.cids || []).includes(s.id));
 
     async function dash(force) {
-      try { ST = await BE.oturum() || ST; } catch (e) {}
+      try { ST = await BE.oturum(); } catch (e) {}
       if (!ST) return loginForm();
       $m('okpTitle').textContent = 'Okul paneli';
-      $m('okpUser').innerHTML = `${esc(ST.ad)} · ${ST.rol ? ROL[ST.rol] : 'onay bekliyor'} ${SUPA ? '<button type="button" id="okpSifreBtn">🔑 Şifrem</button>' : ''}<button type="button" id="okpAyar">⚙️ Tablet ayarları</button> <button type="button" id="okpOut">Çıkış</button>`;
-      if (!ST.rol) { $m('okpTabs').innerHTML = ''; body.innerHTML = `<div class="okg-wait">Hesabınız kurum yöneticisinin onayını bekliyor.<br><small>Yönetici sizi öğretmen olarak onaylayıp sınıfınızı atadığında burada öğrencilerinizi göreceksiniz.</small></div>`; return; }
+      $m('okpUser').innerHTML = `${esc(ST.ad)} · ${ST.rol ? ROL[ST.rol] : 'onay bekliyor'} <button type="button" id="okpSifreBtn">🔑 Şifrem</button><button type="button" id="okpAyar">⚙️ Tablet ayarları</button> <button type="button" id="okpOut">Çıkış</button>`;
       const tabs = ST.rol === 'yonetici' ? [['genel', '🏫 Okul geneli'], ['sinif', '🎒 Sınıf'], ['yonet', '🗂️ Sınıflar ve öğrenciler'], ['kisi', '👩‍🏫 Öğretmenler']] : [['sinif', '🎒 Sınıfım']];
       if (!V.tab || !tabs.some(t => t[0] === V.tab)) V.tab = tabs[0][0];
       $m('okpTabs').innerHTML = tabs.map(([k, t]) => `<button type="button" data-tab="${k}" class="${k === V.tab ? 'on' : ''}">${t}</button>`).join('') + `<button type="button" class="okp-yenile" data-yenile="1">↻ Yenile</button>`;
-      let c; try { c = await load(force); } catch (e) { body.innerHTML = `<p class="rnote">Veriler alınamadı${e.kullanici ? ': ' + esc(e.message) : ''}. Bağlantıyı kontrol edip Yenile'ye basın.</p>`; return; }
+      let c; try { c = await load(force); } catch (e) { if (e.oturumYok) { ST = null; cache = null; return loginForm(e.message); } body.innerHTML = `<p class="rnote">Veriler alınamadı${e.kullanici ? ': ' + esc(e.message) : ''}. Bağlantıyı kontrol edip Yenile'ye basın.</p>`; return; }
       ({ genel, sinif, yonet, kisi, ogrenci })[V.oid && V.tab === 'sinif' ? 'ogrenci' : V.tab](c);
     }
     $m('okpTabs').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; if (b.dataset.yenile) return dash(true); V.tab = b.dataset.tab; V.oid = null; dash(V.tab === 'kisi'); });
@@ -6261,9 +6196,9 @@ tr.okp-bekle td { background: #fff8e8; }
         const ogs = c.ogr.filter(o => o.cid === cl.id), ogt = c.yetkili.filter(y => y.rol === 'ogretmen' && (y.cids || []).includes(cl.id));
         h += `<div class="okp-head"><h4>🎒 ${esc(cl.ad)}</h4><button type="button" class="mini" data-sinif-ad="${esc(cl.id)}">Adını değiştir</button>${ogs.length ? '' : `<button type="button" class="mini red" data-sinif-sil="${esc(cl.id)}">Sınıfı sil</button>`}</div>`;
         h += `<p class="rnote">Öğretmen: ${ogt.length ? ogt.map(y => esc(y.ad)).join(', ') : 'atanmadı ("Öğretmenler" sekmesinden atayın)'}</p>`;
-        h += `<form id="okpOgrEkle" class="okp-form"><label>Öğrenci ekle: her satıra bir ad soyad (Excel sütunundan yapıştırabilirsiniz)<textarea name="list" rows="4" placeholder="Ayşe Yılmaz&#10;Mehmet Kaya"></textarea></label><button type="submit" class="okp-go">Ekle</button></form>`;
-        h += `<table class="rtab okp-ogrl"><tr><th>#</th><th>Öğrenci</th><th>Giriş adı</th><th></th></tr>${ogs.map((o, i) => `<tr><td>${i + 1}</td><td>${esc(o.ad)}</td><td class="dim">${esc(o.ad.split(' ')[0])}${ogs.filter(x => x.k.split(' ')[0] === o.k.split(' ')[0]).length > 1 ? ' + soyadı' : ''}</td><td><button type="button" class="mini" data-ogr-ad="${esc(o.id)}">Düzelt</button> <button type="button" class="mini red" data-ogr-sil="${esc(o.id)}">Sil</button></td></tr>`).join('')}</table>`;
-        h += `<p class="rnote">Çocuk tablette okulunu ve sınıfını seçer, adını yazar. Sınıfta adı tek olan çocuk yalnızca adını yazabilir; aynı ad iki kişide varsa soyadını da yazar.</p>`;
+        h += `<form id="okpOgrEkle" class="okp-form"><label>Öğrenci ekle: her satıra bir öğrenci. Yalnızca ad yeterli; sınıfta aynı ad varsa soyadının ilk harfini ekleyin (Ayşe Y.).<textarea name="list" rows="4" placeholder="Mehmet&#10;Ayşe Y.&#10;Ayşe D."></textarea></label><label class="okp-check"><input type="checkbox" name="kisalt" checked> Soyadı yazılmışsa ilk harfine kısalt (Ayşe Yılmaz → Ayşe Y.). İki adlı öğrenciler için işareti kaldırın.</label><button type="submit" class="okp-go">Ekle</button></form>`;
+        h += `<table class="rtab okp-ogrl"><tr><th>#</th><th>Öğrenci</th><th>Giriş adı</th><th></th></tr>${ogs.map((o, i) => `<tr><td>${i + 1}</td><td>${esc(o.ad)}</td><td class="dim">${(() => { const ayni = ogs.filter(x => x.k.split(' ')[0] === o.k.split(' ')[0]); return ayni.length < 2 ? esc(o.ad.split(' ')[0]) : !o.k.includes(' ') ? '<span class="dus">⚠ aynı ad var: soyadı harfi ekleyin</span>' : esc(o.ad); })()}</td><td><button type="button" class="mini" data-ogr-ad="${esc(o.id)}">Düzelt</button> <button type="button" class="mini red" data-ogr-sil="${esc(o.id)}">Sil</button></td></tr>`).join('')}</table>`;
+        h += `<p class="rnote">Çocuk tablette okulunu ve sınıfını seçer, adını yazar. Sınıfta adı tek olan çocuk yalnızca adını yazar; aynı ad iki kişide varsa soyadının ilk harfini de yazar (Ayşe Y). Kişisel veriyi azaltmak için soyadların tamamını girmeyin.</p>`;
       }
       body.innerHTML = h + '</div></div>';
     }
@@ -6276,7 +6211,8 @@ tr.okp-bekle td { background: #fff8e8; }
         if (f.dataset.yeniSinif) { V.cid = await BE.sinifEkle(f.dataset.yeniSinif, f.ad.value.trim()); msg('Sınıf eklendi.'); return dash(true); }
         if (f.id === 'okpOgrEkle') {
           const cl = c.siniflar.find(s => s.id === V.cid); if (!cl) return;
-          const names = f.list.value.split(/[\n\r\t;]+/).map(s => s.replace(/\s+/g, ' ').trim()).filter(Boolean);
+          const kisalt = ad => { const t = ad.split(' '); if (t.length < 2) return ad; const son = t[t.length - 1]; if (son.replace('.', '').length <= 1) return t.slice(0, -1).join(' ') + ' ' + son.replace('.', '').toLocaleUpperCase('tr-TR') + '.'; return t.slice(0, -1).join(' ') + ' ' + son[0].toLocaleUpperCase('tr-TR') + '.'; };
+          const names = f.list.value.split(/[\n\r\t;]+/).map(s => s.replace(/\s+/g, ' ').trim()).filter(Boolean).map(ad => f.kisalt.checked ? kisalt(ad) : ad);
           const have = new Set(c.ogr.filter(o => o.cid === cl.id).map(o => o.k)), yeni = [], dup = [];
           names.forEach(ad => { const k = BE.norm(ad); if (have.has(k)) dup.push(ad); else { have.add(k); yeni.push({ ad, k }); } });
           await BE.ogrEkle(cl, yeni);
@@ -6295,7 +6231,7 @@ tr.okp-bekle td { background: #fff8e8; }
         if (d.ogrAd) { const o = c.ogr.find(x => x.id === d.ogrAd), v = ask('Öğrencinin adı soyadı:', o.ad); if (v) { const k = BE.norm(v); if (c.ogr.some(x => x.cid === o.cid && x.id !== o.id && x.k === k)) return msg('Bu sınıfta bu adla bir öğrenci zaten var.', true); await BE.ogrAd(o, v, k); dash(true); } return; }
         if (d.ogrSil) { if (!sure(b, 'Emin misiniz? Kayıtları da silinir')) return; await BE.ogrSil(c.ogr.find(x => x.id === d.ogrSil)); return dash(true); }
         if (d.kisiSifre) { const v = ask('Yeni şifre (en az 6 karakter):'); if (!v) return; if (v.length < 6) return msg('Şifre en az 6 karakter olmalı.', true); await BE.sifreKoy(c.yetkili.find(x => x.id === d.kisiSifre), v); return msg('Şifre değiştirildi.'); }
-        if (d.kisiSil) { if (d.kisiSil === ST.id) return msg('Kendi hesabınızı silemezsiniz.', true); if (!sure(b, SUPA ? 'Erişimi kaldır?' : 'Emin misiniz?')) return; await BE.yetkiliSil(c.yetkili.find(x => x.id === d.kisiSil)); return dash(true); }
+        if (d.kisiSil) { if (d.kisiSil === ST.id) return msg('Kendi hesabınızı silemezsiniz.', true); if (!sure(b)) return; await BE.yetkiliSil(c.yetkili.find(x => x.id === d.kisiSil)); return dash(true); }
         if (d.kisiKaydet) {
           const y = c.yetkili.find(x => x.id === d.kisiKaydet), cids = [...body.querySelectorAll(`[data-kc="${CSS.escape(y.id)}"]:checked`)].map(i => i.value);
           const rs = body.querySelector(`[data-kr="${CSS.escape(y.id)}"]`), rol = rs ? rs.value : y.rol;
@@ -6309,28 +6245,20 @@ tr.okp-bekle td { background: #fff8e8; }
     // ---------- öğretmen hesapları ----------
     function kisi(c) {
       const clsBox = (id, sel) => c.siniflar.length ? c.okullar.map(ok => { const ss = c.siniflar.filter(s => s.sid === ok.id); return ss.length ? `<div class="okp-chk"><small>${esc(ok.ad)}</small>${ss.map(s => `<label><input type="checkbox" ${id ? `data-kc="${esc(id)}"` : 'name="cid"'} value="${esc(s.id)}"${sel.includes(s.id) ? ' checked' : ''}> ${esc(s.ad)}</label>`).join('')}</div>` : ''; }).join('') : '<small class="dim">Önce sınıf ekleyin.</small>';
-      const rolSec = y => `<select data-kr="${esc(y.id)}"><option value=""${y.rol ? '' : ' selected'}>Onay bekliyor</option><option value="ogretmen"${y.rol === 'ogretmen' ? ' selected' : ''}>Öğretmen</option><option value="yonetici"${y.rol === 'yonetici' ? ' selected' : ''}>Kurum yöneticisi</option></select>`;
-      const bekleyen = c.yetkili.filter(y => !y.rol);
-      let h = '';
-      if (SUPA && bekleyen.length) h += `<p class="okp-msg">${bekleyen.length} hesap onay bekliyor. Rolünü "Öğretmen" yapıp sınıfını seçin, sonra Kaydet'e basın.</p>`;
-      h += `<h4>Hesaplar</h4><div class="okp-scroll"><table class="rtab okp-kisi"><tr><th>Ad</th><th>${SUPA ? 'E-posta' : 'Kullanıcı adı'}</th><th>Rol</th><th>Sınıfları</th><th></th></tr>`;
+      const rolSec = y => `<select data-kr="${esc(y.id)}"><option value="ogretmen"${y.rol === 'ogretmen' ? ' selected' : ''}>Öğretmen</option><option value="yonetici"${y.rol === 'yonetici' ? ' selected' : ''}>Kurum yöneticisi</option></select>`;
+      let h = `<h4>Hesaplar</h4><div class="okp-scroll"><table class="rtab okp-kisi"><tr><th>Ad</th><th>Kullanıcı adı</th><th>Rol</th><th>Sınıfları</th><th></th></tr>`;
       c.yetkili.forEach(y => {
         const ben = y.id === ST.id;
-        h += `<tr${y.rol ? '' : ' class="okp-bekle"'}><td>${esc(y.ad)}</td><td>${esc(y.hesap || '')}</td><td>${ben ? ROL[y.rol] : (SUPA ? rolSec(y) : ROL[y.rol] || '')}</td><td>${y.rol === 'yonetici' ? '<span class="dim">hepsi</span>' : clsBox(y.id, y.cids || [])}${ben ? '' : `<button type="button" class="mini" data-kisi-kaydet="${esc(y.id)}">Kaydet</button>`}</td><td>${SUPA ? '' : `<button type="button" class="mini" data-kisi-sifre="${esc(y.id)}">Şifre</button>`}${ben || (SUPA && !y.rol) ? '' : ` <button type="button" class="mini red" data-kisi-sil="${esc(y.id)}">${SUPA ? 'Erişimi kaldır' : 'Sil'}</button>`}</td></tr>`;
+        h += `<tr><td>${esc(y.ad)}</td><td>${esc(y.hesap || '')}</td><td>${ben ? ROL[y.rol] : rolSec(y)}</td><td>${y.rol === 'yonetici' ? '<span class="dim">hepsi</span>' : clsBox(y.id, y.cids || [])}${ben ? '' : `<button type="button" class="mini" data-kisi-kaydet="${esc(y.id)}">Kaydet</button>`}</td><td>${ben ? '<span class="dim">siz</span>' : `<button type="button" class="mini" data-kisi-sifre="${esc(y.id)}">Yeni şifre</button> <button type="button" class="mini red" data-kisi-sil="${esc(y.id)}">Sil</button>`}</td></tr>`;
       });
       h += `</table></div>`;
-      if (BE.yetkiliEkleyebilir) {
-        h += `<h4>Yeni hesap</h4><form id="okpKisiEkle" class="okp-form okp-grid"><label>Ad soyad <input name="ad" required maxlength="60"></label><label>Kullanıcı adı <input name="u" required maxlength="30" autocapitalize="none"></label><label>Şifre (en az 6) <input name="pw" type="password" required minlength="6"></label><label>Rol <select name="rol"><option value="ogretmen">Öğretmen</option><option value="yonetici">Kurum yöneticisi</option></select></label><div class="okp-full"><b>Sınıfları</b>${clsBox(null, [])}</div><button type="submit" class="okp-go">Hesabı oluştur</button></form>`;
-        h += `<p class="rnote">Öğretmen yalnızca atandığı sınıfları görür. Yönetici bütün okulları görür ve düzenler. Kullanıcı adı ve şifreyi öğretmene siz iletin.</p>`;
-      } else {
-        h += `<p class="rnote"><b>Yeni öğretmen nasıl eklenir?</b> Öğretmen, Eğitmen düğmesindeki "Öğretmen hesabı oluştur" ile kendi e-postasıyla kayıt olur. Hesabı burada "Onay bekliyor" olarak görünür; rolünü ve sınıfını seçip Kaydet'e basarsınız. Öğretmen yalnızca atandığı sınıfların verisini görebilir; bunu veritabanının kendisi denetler. Şifresini unutan öğretmen giriş ekranındaki "Şifremi unuttum" ile yeniler.</p>`;
-      }
+      h += `<h4>Yeni öğretmen hesabı</h4><form id="okpKisiEkle" class="okp-form okp-grid"><label>Ad soyad <input name="ad" required maxlength="60"></label><label>Kullanıcı adı <input name="u" required maxlength="30" autocapitalize="none" placeholder="ör. ayse.ogretmen" pattern="[a-zA-Z0-9._-]{2,30}" title="Türkçe karaktersiz harf, rakam, nokta ve tire"></label><label>İlk şifre (en az 6) <input name="pw" required minlength="6" autocomplete="off"></label><label>Rol <select name="rol"><option value="ogretmen">Öğretmen</option><option value="yonetici">Kurum yöneticisi</option></select></label><div class="okp-full"><b>Sınıfları</b>${clsBox(null, [])}</div><button type="submit" class="okp-go">Hesabı oluştur</button></form>`;
+      h += `<p class="rnote">Kullanıcı adını ve ilk şifreyi öğretmene siz iletin; öğretmen girdikten sonra "🔑 Şifrem" ile şifresini değiştirebilir. Şifresini unutan öğretmene buradan <b>Yeni şifre</b> verirsiniz. Öğretmen yalnızca atandığı sınıfları görür.${SUPA ? ' Bunu sunucunun kendisi denetler.' : ''}</p>`;
       body.innerHTML = h;
     }
 
     window.mkOkulPanel = { open };
     $m('okgEgitmen').addEventListener('click', open);
-    if (SUPA && BE.ss.get('mk-donus')) setTimeout(open, 0); // e-posta bağlantısından dönüldü
   })();
   $m('teacherBtn').addEventListener('click', e => { e.stopImmediatePropagation(); OKBE.hazir().then(ok => { if (ok) window.mkOkulPanel.open(); else openGate(); }); }, true);
 
